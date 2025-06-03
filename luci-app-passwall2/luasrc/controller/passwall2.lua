@@ -76,7 +76,6 @@ function index()
 	entry({"admin", "services", appname, "copy_node"}, call("copy_node")).leaf = true
 	entry({"admin", "services", appname, "clear_all_nodes"}, call("clear_all_nodes")).leaf = true
 	entry({"admin", "services", appname, "delete_select_nodes"}, call("delete_select_nodes")).leaf = true
-	entry({"admin", "services", appname, "update_rules"}, call("update_rules")).leaf = true
 
 	--[[Components update]]
 	entry({"admin", "services", appname, "check_passwall2"}, call("app_check")).leaf = true
@@ -397,12 +396,6 @@ function delete_select_nodes()
 	end)
 	api.uci_save(uci, appname, true)
 	luci.sys.call("/etc/init.d/" .. appname .. " restart > /dev/null 2>&1 &")
-end
-
-function update_rules()
-	local update = luci.http.formvalue("update")
-	luci.sys.call("lua /usr/share/passwall2/rule_update.lua log '" .. update .. "' > /dev/null 2>&1 &")
-	http_write_json()
 end
 
 function server_user_status()
