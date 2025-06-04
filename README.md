@@ -1,1 +1,1 @@
-精简掉不用的xray模块
+sing-box only
