@@ -38,7 +38,6 @@ function index()
 	if nixio.fs.access("/usr/sbin/haproxy") then
 		entry({"admin", "services", appname, "haproxy"}, cbi(appname .. "/client/haproxy"), _("Load Balancing"), 93).leaf = true
 	end
-	entry({"admin", "services", appname, "app_update"}, cbi(appname .. "/client/app_update"), _("App Update"), 95).leaf = true
 	entry({"admin", "services", appname, "rule"}, cbi(appname .. "/client/rule"), _("Rule Manage"), 96).leaf = true
 	entry({"admin", "services", appname, "node_subscribe_config"}, cbi(appname .. "/client/node_subscribe_config")).leaf = true
 	entry({"admin", "services", appname, "node_config"}, cbi(appname .. "/client/node_config")).leaf = true
@@ -48,15 +47,7 @@ function index()
 	entry({"admin", "services", appname, "acl_config"}, cbi(appname .. "/client/acl_config")).leaf = true
 	entry({"admin", "services", appname, "log"}, form(appname .. "/client/log"), _("Log Maint"), 999).leaf = true
 
-	--[[ Server ]]
-	entry({"admin", "services", appname, "server"}, cbi(appname .. "/server/index"), _("Server-Side"), 99).leaf = true
-	entry({"admin", "services", appname, "server_user"}, cbi(appname .. "/server/user")).leaf = true
-
 	--[[ API ]]
-	entry({"admin", "services", appname, "server_user_status"}, call("server_user_status")).leaf = true
-	entry({"admin", "services", appname, "server_user_log"}, call("server_user_log")).leaf = true
-	entry({"admin", "services", appname, "server_get_log"}, call("server_get_log")).leaf = true
-	entry({"admin", "services", appname, "server_clear_log"}, call("server_clear_log")).leaf = true
 	entry({"admin", "services", appname, "link_add_node"}, call("link_add_node")).leaf = true
 	entry({"admin", "services", appname, "socks_autoswitch_add_node"}, call("socks_autoswitch_add_node")).leaf = true
 	entry({"admin", "services", appname, "socks_autoswitch_remove_node"}, call("socks_autoswitch_remove_node")).leaf = true
@@ -76,15 +67,6 @@ function index()
 	entry({"admin", "services", appname, "copy_node"}, call("copy_node")).leaf = true
 	entry({"admin", "services", appname, "clear_all_nodes"}, call("clear_all_nodes")).leaf = true
 	entry({"admin", "services", appname, "delete_select_nodes"}, call("delete_select_nodes")).leaf = true
-
-	--[[Components update]]
-	entry({"admin", "services", appname, "check_passwall2"}, call("app_check")).leaf = true
-	local coms = require "luci.passwall2.com"
-	local com
-	for com, _ in pairs(coms) do
-		entry({"admin", "services", appname, "check_" .. com}, call("com_check", com)).leaf = true
-		entry({"admin", "services", appname, "update_" .. com}, call("com_update", com)).leaf = true
-	end
 
 	--[[Backup]]
 	entry({"admin", "services", appname, "backup"}, call("create_backup")).leaf = true
@@ -396,56 +378,6 @@ function delete_select_nodes()
 	end)
 	api.uci_save(uci, appname, true)
 	luci.sys.call("/etc/init.d/" .. appname .. " restart > /dev/null 2>&1 &")
-end
-
-function server_user_status()
-	local e = {}
-	e.index = luci.http.formvalue("index")
-	e.status = luci.sys.call(string.format("/bin/busybox top -bn1 | grep -v 'grep' | grep '%s/bin/' | grep -i '%s' >/dev/null", appname .. "_server", luci.http.formvalue("id"))) == 0
-	http_write_json(e)
-end
-
-function server_user_log()
-	local id = luci.http.formvalue("id")
-	if nixio.fs.access("/tmp/etc/passwall2_server/" .. id .. ".log") then
-		local content = luci.sys.exec("cat /tmp/etc/passwall2_server/" .. id .. ".log")
-		content = content:gsub("\n", "<br />")
-		luci.http.write(content)
-	else
-		luci.http.write(string.format("<script>alert('%s');window.close();</script>", i18n.translate("Not enabled log")))
-	end
-end
-
-function server_get_log()
-	luci.http.write(luci.sys.exec("[ -f '/tmp/log/passwall2_server.log' ] && cat /tmp/log/passwall2_server.log"))
-end
-
-function server_clear_log()
-	luci.sys.call("echo '' > /tmp/log/passwall2_server.log")
-end
-
-function app_check()
-	local json = api.to_check_self()
-	http_write_json(json)
-end
-
-function com_check(comname)
-	local json = api.to_check("", comname)
-	http_write_json(json)
-end
-
-function com_update(comname)
-	local json = nil
-	local task = http.formvalue("task")
-	if task == "extract" then
-		json = api.to_extract(comname, http.formvalue("file"), http.formvalue("subfix"))
-	elseif task == "move" then
-		json = api.to_move(comname, http.formvalue("file"))
-	else
-		json = api.to_download(comname, http.formvalue("url"), http.formvalue("size"))
-	end
-
-	http_write_json(json)
 end
 
 function create_backup()
